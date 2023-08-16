@@ -1,18 +1,37 @@
-FROM node:16.15-alpine
+FROM golang:alpine3.18 AS build_base
 
-# set working directory
-WORKDIR /app
+RUN apk add --no-cache git
 
-# install app dependencies
-COPY package.json ./
-RUN npm cache clean --force
-RUN npm install --loglevel verbose  --legacy-peer-deps 
-#RUN npm install -f
+# Set the Current Working Directory inside the container
+WORKDIR /tmp/ishare-middleware
 
+# We want to populate the module cache based on the go.{mod,sum} files.
+COPY go.mod .
+COPY go.sum .
+
+
+RUN go mod download
 
 COPY . .
 
-# Expose port
-EXPOSE 80
-# start app
-CMD [ "npm" , "start" ]
+# Unit tests
+# RUN CGO_ENABLED=0 go test -v
+
+# Build the Go app
+RUN go build -o ./out/ishare-middleware .
+
+# Start fresh from a smaller im age
+FROM alpine:3.18
+RUN apk add ca-certificates
+COPY jwtRSA256-private.pem .
+COPY jwtRSA256-public.pem .
+
+COPY --from=build_base /tmp/ishare-middleware/out/ishare-middleware /app/ishare-middleware
+
+# This container exposes port 8080 to the outside world
+EXPOSE 8080
+
+RUN ls
+
+# Run the binary program produced by `go install`
+CMD ["/app/ishare-middleware"]
