@@ -23,7 +23,7 @@ COPY . .
 RUN go build -o ./out/ishare-middleware .
 
 # Start fresh from a smaller im age
-FROM alpine:3.18
+FROM alpine:3
 RUN apk add ca-certificates
 COPY jwtRSA256-private.pem .
 COPY jwtRSA256-public.pem .
